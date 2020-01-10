@@ -230,6 +230,7 @@
                     if (this.dir_list.length !== 0) {
                         this.dir_now = this.dir_list[0]
                     } else {
+                        this.file_list=[];
                         return false
                     }
                 }
@@ -290,7 +291,8 @@
                 window.open('/logout/', '_self')
             },
             dropdown_click(name) {
-                this.dir_now = name
+                this.dir_now = name;
+                this.query_file()
             },
             del_dir_confirm(name) {
                 this.$Modal.confirm({
