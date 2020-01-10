@@ -2,5 +2,5 @@
 env/
 __pycache__/
 *.pyc
-migrations/
+migrations/*
 !migrations/__init__.py
