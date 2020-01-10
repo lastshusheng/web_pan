@@ -218,6 +218,8 @@
                     this.$Message.error('目录不存在');
                 } else if (res.state_code === -2) {
                     this.$Message.error('参数错误');
+                }else if (res.state_code === -3) {
+                    this.$Message.error('登录过期，请重新登录');
                 }
                 this.btn_disabled = false;
             },

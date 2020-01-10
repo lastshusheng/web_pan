@@ -61,7 +61,7 @@ def login(request):
                 )
             else:
                 request.session['user'] = user
-                request.session.set_expiry(600)
+                request.session.set_expiry(60*60*4)
                 res = dict(
                     state_code=0,
                     error_msg="密码错误"
