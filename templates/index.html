@@ -53,6 +53,7 @@
                             <Menu-Item name="1">
                                 <Icon type="ios-navigate"></Icon>
                                 <Upload
+                                        ref="upload_file"
                                         :show-upload-list="show_upload_list"
                                         action="/upload/"
                                         :data="upload_data"
@@ -141,7 +142,7 @@
         el: '#app',
         data: {
             modal1: false,
-            show_upload_list: false,
+            show_upload_list: true,
             progress_status: false,
             progress_percent: 0,
             btn_disabled: false,
@@ -210,6 +211,7 @@
             upload_ok(res) {
                 if (res.state_code === 0) {
                     this.$Message.success('上传成功');
+                    this.$refs.upload_file.clearFiles();
                     this.query_file()
                 } else if (res.state_code === 1) {
                     this.$Message.error('目录不存在');
