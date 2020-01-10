@@ -1,0 +1,6 @@
+.idea/
+env/
+__pycache__/
+*.pyc
+migrations/
+!migrations/__init__.py

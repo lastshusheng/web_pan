@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/css/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/iview.css">
+    <script src="/static/js/vue.js"></script>
+    <script src="https://cdn.bootcss.com/vue-resource/1.5.1/vue-resource.js"></script>
+    <script type="text/javascript" src="/static/js/iview.min.js"></script>
+    <title>登陆</title>
+    <style>
+        .box {
+            width: 300px;
+            height: 300px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+        }
+
+        .mybutton {
+            width: 300px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="box-container">
+        <div class="box">
+            <h1>登陆</h1>
+            <com1></com1>
+        </div>
+    </div>
+</div>
+<template id="loginForm">
+    <i-Form ref="formInline" :model="formInline" :rules="ruleInline">
+        <Form-Item prop="user">
+            <i-Input type="text" v-model="formInline.user" placeholder="Username">
+                <Icon type="ios-person-outline" slot="prepend"></Icon>
+            </i-Input>
+        </Form-Item>
+        <Form-Item prop="password">
+            <i-Input type="password" v-model="formInline.password" placeholder="Password">
+                <Icon type="ios-lock-outline" slot="prepend"></Icon>
+            </i-Input>
+        </Form-Item>
+        <Form-Item>
+            <i-Button class="mybutton" type="primary" @click="handleSubmit('formInline')">登陆</i-Button>
+        </Form-Item>
+    </i-Form>
+</template>
+</body>
+<script>
+    var vm = new Vue({
+        el: "#app",
+        data: {},
+        methods: {},
+        components: {
+            com1: {
+                template: '#loginForm',
+                data() {
+                    return {
+                        formInline: {
+                            user: 'wss',
+                            password: '123'
+                        },
+                        ruleInline: {
+                            user: [
+                                {required: true, message: '请输入用户名', trigger: 'blur'}
+                            ],
+                            password: [
+                                {required: true, message: '请输入密码.', trigger: 'blur'},
+                                {
+                                    type: 'string',
+                                    min: 3,
+                                    message: 'The password length cannot be less than 3 bits',
+                                    trigger: 'blur'
+                                }
+                            ]
+                        }
+                    }
+                },
+                methods: {
+                    handleSubmit(name) {
+                        this.$refs[name].validate((valid) => {
+                            if (valid) {
+                                post_data = {
+                                    username:this.formInline.user,
+                                    pwd:this.formInline.password
+                                };
+                                this.$http.post('/login/', post_data).then(response => {
+                                    if(response.body.state_code === 0){
+                                        window.open('/index/','_self')
+                                    } else if (response.body.state_code===2){
+                                        this.$Message.error('密码错误');
+                                    } else if (response.body.state_code===1){
+                                        this.$Message.error('用户不存在');
+                                    }
+                                }, err => {
+                                    alert('未知错误')
+                                })
+                            } else {
+                                this.$Message.error('Fail!');
+                            }
+                        })
+                    }
+                }
+            }
+        }
+    })
+</script>
+</html>

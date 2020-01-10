@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/css/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/iview.css">
+    <script src="/static/js/vue.js"></script>
+    <script src="https://cdn.bootcss.com/vue-resource/1.5.1/vue-resource.js"></script>
+    <script type="text/javascript" src="/static/js/iview.min.js"></script>
+    <title>文件管理</title>
+    <style scoped>
+        .layout {
+            border: 1px solid #d7dde4;
+            background: #f5f7f9;
+            position: relative;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .layout-logo {
+            width: 100px;
+            height: 30px;
+            background: white;
+            border-radius: 3px;
+            float: left;
+            position: relative;
+            top: 15px;
+            left: 20px;
+            line-height: 30px;
+            text-align: center;
+        }
+
+        .layout-nav {
+            width: 480px;
+            margin: 0 auto;
+            margin-right: 20px;
+        }
+
+        .layout-footer-center {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    {% verbatim list_block %}
+        <div class="layout">
+            <Layout>
+                <i-Header>
+                    <i-Menu mode="horizontal" theme="dark" active-name="1">
+                        <div class="layout-logo">迷你小网盘</div>
+                        <div class="layout-nav">
+                            <Menu-Item name="1">
+                                <Icon type="ios-navigate"></Icon>
+                                <Upload
+                                        :show-upload-list="show_upload_list"
+                                        action="/upload/"
+                                        :data="upload_data"
+                                        style="display: inline-block"
+                                        name="file"
+                                        :before-upload="check_dir"
+                                        :on-success="upload_ok"
+                                        :on-error="upload_failed">
+                                    上传文件
+                                </Upload>
+                            </Menu-Item>
+                            <Menu-Item name="2">
+                                <Icon type="ios-keypad"></Icon>
+                                <span @click="modal1 = true">创建目录</span>
+                                <Modal
+                                        v-model="modal1"
+                                        title="创建目录"
+                                        @on-ok="ok"
+                                        @on-cancel="cancel">
+                                    <i-Input v-model="dir_name" placeholder="请输入目录名称" style="width: 300px"/>
+                                </Modal>
+                            </Menu-Item>
+                            <Menu-Item name="3">
+                                <Icon type="md-remove-circle"></Icon>
+                                <Dropdown @on-click="del_dir_confirm">
+                                    <span>
+                                        删除目录
+                                    </span>
+                                    <Dropdown-Menu slot="list" v-for="item1 in dir_list">
+                                        <Dropdown-Item :name="item1">{{ item1 }}</Dropdown-Item>
+                                    </Dropdown-Menu>
+                                </Dropdown>
+                            </Menu-Item>
+                            <Menu-Item name="4">
+                                <Icon type="md-power"></Icon>
+                                <span @click="logout">注销</span>
+                            </Menu-Item>
+                        </div>
+                    </i-Menu>
+                </i-Header>
+                <i-Content :style="{padding: '0 50px'}">
+                    <div class="dropdown-dir">
+                        <Dropdown trigger="click" style="margin-top: 5px;margin-bottom: 5px" @on-click="dropdown_click">
+                            <i-Button>
+                                {{ dir_now }}
+                                <Icon type="ios-arrow-down"></Icon>
+                            </i-Button>
+                            <Dropdown-Menu slot="list" v-for="item in dir_list">
+                                <Dropdown-Item :name="item">{{ item }}</Dropdown-Item>
+                            </Dropdown-Menu>
+                        </Dropdown>
+                    </div>
+                    <div v-show="progress_status" class="my-progress">
+                        <i-Progress :percent="progress_percent" :stroke-width="20" status="active" text-inside/>
+                    </div>
+                    <Card>
+                        <div style="min-height: 713px;">
+                            <i-Table :columns="columns1" :data="file_list">
+                                <template slot-scope="{ row, index }" slot="action">
+                                    <i-Button type="primary" size="small" style="margin-right: 5px"
+                                              @click="download(index)" :disabled="btn_disabled">
+                                        下载
+                                    </i-Button>
+                                    <i-Button type="error" size="small" @click="remove_confirm(index)">删除</i-Button>
+                                </template>
+                            </i-Table>
+                        </div>
+                    </Card>
+                </i-Content>
+                <i-Footer class="layout-footer-center">1996-2020 &copy; 王舒生</i-Footer>
+            </Layout>
+        </div>
+    {% endverbatim list_block %}
+</div>
+</body>
+<script>
+    function sleep(n) {
+        var start = new Date().getTime();
+        while (true) if (new Date().getTime() - start > n) break;
+    }
+
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            modal1: false,
+            show_upload_list: false,
+            progress_status: false,
+            progress_percent: 0,
+            btn_disabled: false,
+            upload_data: {},
+            dir_now: "无目录",
+            dir_name: "",
+            dir_list: [],
+            columns1: [
+                {
+                    title: '文件名',
+                    key: 'file_name',
+                    width: 480
+                },
+                {
+                    title: '类型',
+                    key: 'file_type'
+                },
+                {
+                    title: '大小',
+                    key: 'file_size'
+                },
+                {
+                    title: '操作',
+                    slot: 'action',
+                    width: 150,
+                    align: 'center'
+                }
+            ],
+            file_list: []
+        },
+        watch: {
+            dir_now: function (new_data, old_data) {
+                this.upload_data = {dir_name: new_data}
+            }
+        },
+        methods: {
+            check_dir() {
+                if (this.dir_list.length === 0 || this.dir_now === "无目录") {
+                    this.$Message.error('该用户暂无目录，请先创建目录');
+                    return false
+                }
+                if (this.dir_now === "请选择目录"){
+                    this.$Message.error('请先选择目录');
+                    return false
+                }
+            },
+            get_dir_list() {
+                return new Promise((resolve, reject) => {
+                    this.$http.get('/get_dir_list/').then(response => {
+                        if (response.body.state_code === 0) {
+                            this.dir_list = response.body.data.dir_list;
+                            if (this.dir_list.length !== 0 && this.dir_now === '无目录') {
+                                this.dir_now = "请选择目录"
+                            }
+                            return resolve('ok')
+                        } else {
+                            this.$Message.error('目录获取失败');
+                            return reject('目录获取失败')
+                        }
+                    }, err => {
+                        this.$Message.error('获取目录接口异常');
+                        return reject('获取目录接口异常')
+                    })
+                })
+            },
+            upload_ok(res) {
+                if (res.state_code === 0) {
+                    this.$Message.success('上传成功');
+                    this.query_file()
+                } else if (res.state_code === 1) {
+                    this.$Message.error('目录不存在');
+                } else if (res.state_code === -2) {
+                    this.$Message.error('参数错误');
+                }
+            },
+            upload_failed() {
+                this.$Message.error('添加失败，接口异常');
+            },
+            query_file() {
+                if (this.dir_now === "请选择目录" || this.dir_now === "无目录") {
+                    if (this.dir_list.length !== 0) {
+                        this.dir_now = this.dir_list[0]
+                    } else {
+                        return false
+                    }
+                }
+                let post_data = {
+                    dir_name: this.dir_now
+                };
+                this.$http.post('/query_file/', post_data).then(response => {
+                    if (response.body.state_code === 0) {
+                        this.file_list = response.body.data.file_list
+                    } else if (response.body.state_code === 1) {
+                        this.$Message.error('当前目录不存在');
+                    } else if (response.body.state_code === -3) {
+                        this.$Message.error('登陆过期，请重新登陆');
+                    }
+                }, err => {
+                    this.$Message.error('获取文件接口异常');
+                });
+            },
+            ok() {
+                if (!this.dir_name) {
+                    this.$Message.error('目录名不能为空');
+                    this.dir_name = "";
+                    return false
+                }
+                if (this.dir_name) {
+                    if (!/^[a-zA-Z_]+$/.test(this.dir_name)) {
+                        this.$Message.error('目录名只能由字母和下划线组成');
+                        this.dir_name = "";
+                        return false
+                    }
+                }
+                post_data = {
+                    dir_name: this.dir_name
+                };
+                this.$http.post('/mkdir/', post_data).then(response => {
+                    if (response.body.state_code === 0) {
+                        this.$Message.info('创建成功');
+                        this.dir_name = "";
+                        this.get_dir_list()
+                    } else if (response.body.state_code === 1) {
+                        this.$Message.error('该目录已被使用');
+                        this.dir_name = "";
+                    } else if (response.body.state_code === -3) {
+                        this.$Message.error('登陆过期，请重新登陆');
+                    } else if (response.body.state_code === -2) {
+                        this.$Message.error('参数错误');
+                    }
+                }, err => {
+                    this.$Message.error('创建目录接口异常');
+                    this.dir_name = ""
+                });
+            },
+            cancel() {
+                this.$Message.info('已取消操作');
+                this.dir_name = ""
+            },
+            logout() {
+                window.open('/logout/', '_self')
+            },
+            dropdown_click(name) {
+                this.dir_now = name
+            },
+            del_dir_confirm(name) {
+                this.$Modal.confirm({
+                    title: '删除确认',
+                    content: `确定删除下面目录吗，删除后该目录下所有文件将删除且不可恢复<br>${name}`,
+                    onOk: () => {
+                        this.del_dir(name)
+                    },
+                    onCancel: () => {
+                        this.cancel()
+                    }
+                })
+            },
+            del_dir(name) {
+                let post_data = {
+                    dir_name: name
+                };
+                this.$http.post('/del_dir/', post_data).then(response => {
+                    if (response.body.state_code === 0) {
+                        this.$Message.info('删除成功');
+                        this.dir_now = "无目录";
+                        this.get_dir_list().then(this.query_file);
+                    } else if (response.body.state_code === 1) {
+                        this.$Message.error('目录不存在');
+                        this.dir_now = "无目录";
+                        this.get_dir_list().then(this.query_file);
+                    } else if (response.body.state_code === -3) {
+                        this.$Message.error('登陆过期，请重新登陆');
+                    } else if (response.body.state_code === -2) {
+                        this.$Message.error('参数错误');
+                    }
+                }, err => {
+                    this.$Message.error('删除目录接口异常');
+                });
+            },
+            download(index) {
+                this.btn_disabled = true;
+                this.progress_status = true;
+                <!--
+                let file_size_str = this.file_list[index].file_size;
+                let regPos = /^\d+(\.\d+)?$/;
+                if (regPos.test(file_size_str)) {
+                file_size_str = file_size_str + 'B'
+                }
+                let danwei = file_size_str.slice(-1);
+                let num = file_size_str.slice(0, -1);
+                let file_size = 0;
+                if (danwei === 'K') {
+                    file_size = num * 1024
+                } else if (danwei === 'M') {
+                    file_size = num * 1024 * 1024
+                } else if (danwei === 'G') {
+                    file_size = num * 1024 * 1024 * 1024
+                } else if (danwei === 'B') {
+                    file_size = num
+                } else {
+                    file_size = num * 1024 * 1024 * 1024 * 1024
+                }
+                -->
+                let post_data = {
+                    file_name: this.file_list[index].file_name,
+                    file_type: this.file_list[index].file_type,
+                    dir_name: this.dir_now
+                };
+                this.$http.post('/download/', post_data, {
+                    responseType: 'blob', downloadProgress: event => {
+                        let loaded = event.loaded;
+                        let total = event.total;
+                        this.progress_percent = Number((loaded / total * 100).toFixed(2));
+                    }
+                }).then(response => {
+                    var xx = "content-disposition";
+                    let url = window.URL.createObjectURL(new Blob([response["data"]]));
+                    let link = document.createElement("a");
+                    link.style.display = "none";
+                    link.href = url;
+                    link.setAttribute(
+                        "download",
+                        decodeURIComponent(response.headers.map[xx][0].split(";")[1].split("=")[1].split('"')[1])
+                    );
+                    document.body.appendChild(link);
+                    link.click();
+                    this.$Message.success("已下载");
+                    this.btn_disabled = false;
+                    this.progress_status = false;
+                    this.progress_percent = 0
+                }, err => {
+                    alert('下载接口异常')
+                })
+            },
+            remove_confirm(index) {
+                this.$Modal.confirm({
+                    title: '删除确认',
+                    content: `确定删除下面文件吗，删除后不可恢复<br>${this.file_list[index].file_name}.${this.file_list[index].file_type}`,
+                    onOk: () => {
+                        this.remove(this.file_list[index].file_name, this.file_list[index].file_type)
+                    },
+                    onCancel: () => {
+                        this.cancel()
+                    }
+                })
+            },
+            remove(file_name, file_type) {
+                let post_data = {
+                    dir_name: this.dir_now,
+                    file_name: file_name,
+                    file_type: file_type
+                };
+                this.$http.post('/del_file/', post_data).then(response => {
+                    if (response.body.state_code === 0) {
+                        this.$Message.success('删除成功');
+                        this.query_file()
+                    } else if (response.body.state_code === 1) {
+                        this.$Message.error('该文件不存在');
+                    } else if (response.body.state_code === -3) {
+                        this.$Message.error('登陆过期，请重新登陆');
+                    }
+                }, err => {
+                    this.$Message.error('删除文件接口异常');
+                });
+            },
+        },
+        created() {
+            this.get_dir_list().then(this.query_file)
+        }
+    })
+</script>
+</html>
