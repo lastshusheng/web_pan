@@ -3,4 +3,3 @@ env/
 __pycache__/
 *.pyc
 !migrations/__init__.py
-migrations
