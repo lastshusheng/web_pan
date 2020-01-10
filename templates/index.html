@@ -122,7 +122,10 @@
                         </div>
                     </Card>
                 </i-Content>
-                <i-Footer class="layout-footer-center">1996-2020 &copy; 王舒生</i-Footer>
+                <i-Footer class="layout-footer-center"><p>ICP备案编号：<a
+                        href="http://beian.miit.gov.cn" title="皖ICP备17011294号-3">皖ICP备17011294号-3</a></p>
+                    1996-2020 &copy; 王舒生
+                </i-Footer>
             </Layout>
         </div>
     {% endverbatim list_block %}
@@ -180,7 +183,7 @@
                     this.$Message.error('该用户暂无目录，请先创建目录');
                     return false
                 }
-                if (this.dir_now === "请选择目录"){
+                if (this.dir_now === "请选择目录") {
                     this.$Message.error('请先选择目录');
                     return false
                 }
